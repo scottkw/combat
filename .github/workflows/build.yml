@@ -30,8 +30,9 @@ jobs:
             binary: dist/Combat
             asset: Combat-macos-arm64
             extra: "--windowed --osx-bundle-identifier com.local.combat"
+          # macos-13 was retired; macos-15-intel is the Intel runner label
           - name: macos-x86_64
-            os: macos-13
+            os: macos-15-intel
             binary: dist/Combat
             asset: Combat-macos-x86_64
             extra: "--windowed --osx-bundle-identifier com.local.combat"
@@ -46,11 +47,11 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # 3.13, not 3.14: the 3.14 pygame wheel ships without pygame.mixer, so the
       # game builds and runs but is silent.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
@@ -92,7 +93,7 @@ jobs:
           fi
           ls -lh assets
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
           path: assets/*
@@ -107,9 +108,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4        # for .github/release-notes.md
+      - uses: actions/checkout@v7        # for .github/release-notes.md
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: assets
           merge-multiple: true
