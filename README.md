@@ -1,12 +1,14 @@
 # Combat
 
+[![build](https://github.com/scottkw/combat/actions/workflows/build.yml/badge.svg)](https://github.com/scottkw/combat/actions/workflows/build.yml)
+
 An Atari 2600 *Combat* clone in Python/pygame, shipped as a standalone macOS
 arm64 binary. Two tanks, a symmetric maze, one shot in flight each, 2:16 on the
 clock.
 
-**[Download the macOS build](https://github.com/scottkw/combat/releases/latest)**
-— a 13 MB Apple-silicon executable, or the same game as a `.app`. No Python or
-pygame needed.
+**[Download a build](https://github.com/scottkw/combat/releases/latest)** — macOS
+(Apple silicon or Intel), Linux x86_64, or Windows x86_64. No Python or pygame
+needed.
 
 ```
 ./dist/Combat          # single file, after building locally
@@ -236,6 +238,25 @@ PyInstaller warns that `--onefile` plus a `.app` bundle is deprecated and will
 error in v7. Both artifacts were launched and work today; if that breaks, switch
 to `--onedir --windowed` for the `.app` and keep a separate `--onefile` build for
 the standalone binary.
+
+### Continuous integration
+
+`.github/workflows/build.yml` builds and self-tests on every push and pull
+request across four targets: Linux x86_64, macOS arm64, macOS x86_64 and Windows
+x86_64. Each job runs the test suite twice — once from source, once through the
+packaged binary — so a bundle that fails to unpack its own dependencies fails the
+build. Windows skips the packaged run: a `--windowed` exe has no stdout, and an
+assertion failure there can surface as a dialog that would hang the job.
+
+Pushing a `v*` tag runs the same matrix and then publishes every artifact to a
+GitHub release, with notes from `.github/release-notes.md`:
+
+```bash
+git tag v1.1.0 && git push origin v1.1.0
+```
+
+Nothing is published on ordinary pushes; builds land as 14-day workflow
+artifacts instead.
 
 ### Running from source
 

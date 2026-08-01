@@ -1,0 +1,128 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            binary: dist/Combat
+            asset: Combat-linux-x86_64
+            # --windowed is a macOS/Windows concept; PyInstaller ignores it here
+            extra: ""
+          - name: macos-arm64
+            os: macos-14
+            binary: dist/Combat
+            asset: Combat-macos-arm64
+            extra: "--windowed --osx-bundle-identifier com.local.combat"
+          - name: macos-x86_64
+            os: macos-13
+            binary: dist/Combat
+            asset: Combat-macos-x86_64
+            extra: "--windowed --osx-bundle-identifier com.local.combat"
+          - name: windows-x86_64
+            os: windows-latest
+            binary: dist/Combat.exe
+            asset: Combat-windows-x86_64.exe
+            extra: "--windowed"
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 3.13, not 3.14: the 3.14 pygame wheel ships without pygame.mixer, so the
+      # game builds and runs but is silent.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pygame pyinstaller
+
+      # --selftest forces the SDL dummy video/audio drivers itself, so this needs
+      # no display, no sound card and no xvfb on any runner.
+      - name: Self-test from source
+        run: python combat.py --selftest
+
+      - name: Build
+        run: |
+          pyinstaller --noconfirm --clean --onefile ${{ matrix.extra }} \
+            --name Combat combat.py
+
+      # Proves the bundle is self-contained: same suite, run through the packaged
+      # binary. Skipped on Windows because a --windowed exe has no stdout and an
+      # assertion failure there can surface as a dialog that would hang the job.
+      - name: Self-test the packaged binary
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x "${{ matrix.binary }}"
+          "${{ matrix.binary }}" --selftest
+
+      - name: Check the packaged binary exists
+        run: |
+          test -f "${{ matrix.binary }}" || { echo "no binary at ${{ matrix.binary }}"; exit 1; }
+          ls -lh "${{ matrix.binary }}"
+
+      - name: Stage release assets
+        run: |
+          mkdir -p assets
+          cp "${{ matrix.binary }}" "assets/${{ matrix.asset }}"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            ditto -c -k --keepParent dist/Combat.app "assets/${{ matrix.asset }}-app.zip"
+          fi
+          ls -lh assets
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: assets/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4        # for .github/release-notes.md
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ls -lh assets
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" assets/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" assets/* --repo "$GITHUB_REPOSITORY" \
+              --title "Combat $TAG" --notes-file .github/release-notes.md
+          fi
