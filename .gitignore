@@ -1,0 +1,12 @@
+# build environment and PyInstaller output
+venv/
+build/
+dist/
+*.spec.bak
+
+# python
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
