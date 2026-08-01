@@ -4,9 +4,21 @@ An Atari 2600 *Combat* clone in Python/pygame, shipped as a standalone macOS
 arm64 binary. Two tanks, a symmetric maze, one shot in flight each, 2:16 on the
 clock.
 
+**[Download the macOS build](https://github.com/scottkw/combat/releases/latest)**
+— a 13 MB Apple-silicon executable, or the same game as a `.app`. No Python or
+pygame needed.
+
 ```
-./dist/Combat          # 13 MB single file, no Python needed
+./dist/Combat          # single file, after building locally
 open dist/Combat.app   # same game, double-clickable from Finder
+```
+
+The binary is ad-hoc signed, not notarised, so macOS quarantines anything
+downloaded from GitHub and refuses to open it. Clear the flag once:
+
+```
+xattr -dr com.apple.quarantine ~/Downloads/Combat-macos-arm64
+chmod +x ~/Downloads/Combat-macos-arm64
 ```
 
 ---
@@ -287,8 +299,9 @@ Deliberate omissions, in rough order of how much anyone would miss them:
 - Gamepad support (keyboard only).
 - Score persistence; nothing is written to disk.
 - Code signing and notarisation — the binary is ad-hoc signed. Fine on the
-  machine that built it; another Mac will flag it as unidentified and need a
-  right-click → Open.
+  machine that built it; anywhere it is downloaded, macOS quarantines it and
+  needs `xattr -dr com.apple.quarantine` before it will run. Proper signing needs
+  a paid Apple Developer ID.
 
 ---
 
@@ -302,4 +315,8 @@ dist/Combat     standalone arm64 binary
 dist/Combat.app Finder-launchable bundle wrapping the same binary
 build/          PyInstaller scratch, safe to delete
 venv/           Python 3.13 build environment, safe to delete
+
+`dist/`, `build/`, `venv/` and `__pycache__/` are gitignored — build output does
+not belong in the history. The executables are published as release assets
+instead.
 ```
